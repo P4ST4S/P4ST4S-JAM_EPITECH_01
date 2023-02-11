@@ -86,7 +86,7 @@ shoots = []
 enemies = []
 for i in range(5):
     for j in range(5):
-        enemy = Enemy(width / 2 - enemy_img.get_width() +
+        enemy = Enemy((width - enemy_img.get_width() * 5) / 2 +
                       j * 100, i * 100 - height / 2)
         enemies.append(enemy)
 
