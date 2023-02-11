@@ -13,6 +13,7 @@ screen = pygame.display.set_mode((height, width))
 WHITE = (255, 255, 255)
 BLACK = (0, 0, 0)
 RED = (255, 0, 0)
+GREY = (128, 128, 128)
 
 # Define speed of game elements
 player_speed = 5
@@ -72,9 +73,15 @@ class Enemy:
         self.rect = self.img.get_rect()
         self.rect.x = x
         self.rect.y = y
+        self.direction = 1
 
     def move(self):
+        self.rect.x += self.direction * speed_enemy
         self.rect.y += speed_enemy
+        if self.rect.x > height - self.rect.width or self.rect.x < 0:
+            self.direction *= -1
+        if random.randint(0, 100) < 5:
+            self.direction *= -1
 
     def draw(self):
         screen.blit(self.img, self.rect)
@@ -135,7 +142,7 @@ while running:
                 break
 
     # Draw game elements
-    screen.fill(RED)
+    screen.fill(GREY)
     screen.blit(player.img, player.rect)
     for shoot in shoots:
         shoot.draw()
