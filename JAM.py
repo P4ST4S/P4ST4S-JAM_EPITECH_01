@@ -48,6 +48,8 @@ class Player:
 
 
 # Define shoot
+
+
 class Shoot:
     def __init__(self, x, y):
         self.img = shoot_img
