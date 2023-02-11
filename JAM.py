@@ -8,6 +8,8 @@ pygame.init()
 height = 800
 width = 600
 screen = pygame.display.set_mode((height, width))
+font = pygame.font.SysFont(None, 30)
+score_text = 0
 
 # Define colors
 WHITE = (255, 255, 255)
@@ -137,6 +139,7 @@ while running:
     for shoot in shoots:
         for enemy in enemies:
             if shoot.rect.colliderect(enemy.rect):
+                score_text += 1
                 enemies.remove(enemy)
                 shoots.remove(shoot)
                 break
@@ -148,6 +151,10 @@ while running:
         shoot.draw()
     for enemy in enemies:
         enemy.draw()
+
+    # Draw score
+    score = font.render('Score: ' + str(score_text), True, BLACK)
+    screen.blit(score, (0, 0))
 
     # Update display
     pygame.display.update()
