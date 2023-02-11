@@ -21,7 +21,7 @@ GREY = (128, 128, 128)
 # Define speed of game elements
 player_speed = 5
 speed_shoot = 10
-speed_enemy = 0
+speed_enemy = 2
 
 # Define mouse usage
 mouse_pos = [0, 0]
@@ -30,16 +30,21 @@ mouse_button = [0, 0, 0] # lclic, scroll clic, rclic
 # Load images
 player_img = pygame.image.load('assets/player.png')
 player_img = pygame.transform.scale(player_img, (50, 50))
-enemy_img = pygame.image.load('assets/enemy.png')
+boss_img = pygame.image.load('assets/boss.png')
+boss_img = pygame.transform.scale(boss_img, (100, 100))
+enemy_img = pygame.image.load('assets/fireBall.png')
 enemy_img = pygame.transform.scale(enemy_img, (50, 50))
+enemy_img = pygame.transform.rotate(enemy_img, 180)
 shoot_img = pygame.image.load('assets/shoot.png')
-shoot_img = pygame.transform.scale(shoot_img, (10, 20))
+shoot_img = pygame.transform.scale(shoot_img, (32, 40))
 
 # Define player
 class Player:
     def __init__(self, x, y):
         self.img = player_img
         self.rect = self.img.get_rect()
+        self.shoots = []
+        self.last_shoot = 0
         self.rect.x = x
         self.rect.y = y
 
@@ -50,8 +55,17 @@ class Player:
         self.rect.x += player_speed
 
     def shoot(self, dest):
-        return Shoot(self.rect.x + self.rect.width / 2 - shoot_img.get_width() / 2, self.rect.y, dest)
+        now = pygame.time.get_ticks()
+        if now - self.last_shoot > 50:
+            self.last_shoot = now
+            self.shoots.append(Shoot(self.rect.x + self.rect.width / 2 - shoot_img.get_width() / 2, self.rect.y, dest))
 
+    def draw(self):
+        screen.blit(self.img, self.rect)
+    
+    def draw_shoots(self):
+        for shoot in self.shoots:
+            shoot.draw()
 
 # Define shoot
 def get_rotate_angle(vect):
@@ -100,10 +114,20 @@ class Enemy:
     def draw(self):
         screen.blit(self.img, self.rect)
 
+class Boss:
+    def __init__(self, width, height):
+        self.img = boss_img
+        self.rect = self.img.get_rect()
+        self.rect.x = width / 2 - 50
+        self.rect.y = height / 20
+    
+    def draw(self):
+        screen.blit(self.img, self.rect)
+        
 
 player = Player(height / 2 - player_img.get_width() /
                 2, width - player_img.get_height())
-shoots = []
+boss = Boss(width, height)
 enemies = []
 for i in range(5):
     for j in range(5):
@@ -114,7 +138,6 @@ for i in range(5):
 # Define game loop
 running = True
 clock = pygame.time.Clock()
-last_shoot = 0
 win = False
 lose = False
 while running:
@@ -136,13 +159,10 @@ while running:
     if keys[pygame.K_RIGHT] and player.rect.x < height - player.rect.width:
         player.move_right()
     if mouse_button[0]:
-        now = pygame.time.get_ticks()
-        if now - last_shoot > 50:
-            last_shoot = now
-            shoots.append(player.shoot(mouse_pos))
+        player.shoot(mouse_pos)
 
     # Update game elements
-    for shoot in shoots:
+    for shoot in player.shoots:
         shoot.move()
     for enemy in enemies:
         enemy.move()
@@ -151,12 +171,12 @@ while running:
             enemies.remove(enemy)
 
     # Check for collisions between shoots and enemies
-    for shoot in shoots:
+    for shoot in player.shoots:
         for enemy in enemies:
             if shoot.rect.colliderect(enemy.rect):
                 score_text += 1
                 enemies.remove(enemy)
-                shoots.remove(shoot)
+                player.shoots.remove(shoot)
                 break
 
     # Get mouse position clicks
@@ -166,12 +186,12 @@ while running:
     # Draw game elements
     screen.fill(GREY)
     if not win and not lose:
-        screen.blit(player.img, player.rect)
-        for shoot in shoots:
-            shoot.draw()
+        player.draw_shoots()
         for enemy in enemies:
             enemy.draw()
-
+        boss.draw()
+        player.draw()
+    
     # Draw score
     score = font.render('Score: ' + str(score_text), True, BLACK)
     screen.blit(score, (0, 0))
