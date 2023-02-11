@@ -27,8 +27,10 @@ mouse_pos = [0, 0]
 mouse_button = [0, 0, 0] # lclic, scroll clic, rclic
 
 # Load images
-player_img = pygame.image.load('assets/player.png')
-player_img = pygame.transform.scale(player_img, (50, 50))
+plyr_back = pygame.image.load('assets/plyr_back.png')
+plyr_back = pygame.transform.scale(plyr_back, (50, 50))
+plyr_front = pygame.image.load('assets/plyr_front.png')
+plyr_front = pygame.transform.scale(plyr_front, (50, 50))
 boss_img = pygame.image.load('assets/boss.png')
 boss_img = pygame.transform.scale(boss_img, (100, 100))
 asteroid_img = pygame.image.load('assets/fireBall.png')
@@ -43,21 +45,22 @@ shoot_img = pygame.transform.scale(shoot_img, (32, 40))
 # Define player
 class Player:
     def __init__(self, x, y):
-        self.img = player_img
+        self.img = plyr_back
         self.rect = self.img.get_rect()
+        self.direction = [0, 0, 0, 0]
         self.shoots = []
         self.last_shoot = 0
         self.rect.x = x
         self.rect.y = y
 
-    def move(self, direction):
-        if (direction[0]):
-            self.rect.x =- player_speed
-        if (direction[1]):
+    def move(self):
+        if (self.direction[0]):
+            self.rect.x -= player_speed
+        if (self.direction[1]):
             self.rect.x += player_speed
-        if (direction[2]):
-            self.rect.y =- player_speed
-        if (direction[3]):
+        if (self.direction[2]):
+            self.rect.y -= player_speed
+        if (self.direction[3]):
             self.rect.y += player_speed
 
     def shoot(self, dest):
@@ -66,7 +69,11 @@ class Player:
             self.last_shoot = now
             self.shoots.append(Shoot(self.rect.x + self.rect.width / 2 - shoot_img.get_width() / 2, self.rect.y, dest))
 
-    def draw(self):
+    def draw(self, mouse):
+        if (self.rect.y > mouse[1]):
+            self.img = plyr_back
+        else:
+            self.img = plyr_front
         screen.blit(self.img, self.rect)
     
     def draw_shoots(self):
@@ -155,7 +162,7 @@ class Boss:
             enemy.draw()
         
 # Create player
-player = Player(width / 2 - player_img.get_width() / 2, height - player_img.get_height())
+player = Player(width / 2 - plyr_back.get_width() / 2, height - plyr_back.get_height())
 
 # Create boss and his fireballs
 boss = Boss(width, height)
@@ -180,14 +187,19 @@ while running:
 
     # Check for pressed keys
     keys = pygame.key.get_pressed()
-    if keys[pygame.K_LEFT] and player.rect.x > 0:
-        player.move_left()
-    if keys[pygame.K_RIGHT] and player.rect.x < height - player.rect.width:
-        player.move_right()
+    if keys[pygame.K_q] and player.rect.x > 0:
+        player.direction[0] = 1
+    if keys[pygame.K_d] and player.rect.x < height - player.rect.width:
+        player.direction[1] = 1
+    if keys[pygame.K_z] and player.rect.x > 0:
+        player.direction[2] = 1
+    if keys[pygame.K_s] and player.rect.x < height - player.rect.width:
+        player.direction[3] = 1
     if mouse_button[0]:
         player.shoot(mouse_pos)
 
     # Update game elements
+    player.move()
     for shoot in player.shoots:
         shoot.move()
     for enemy in boss.fire_balls:
@@ -224,13 +236,19 @@ while running:
     mouse_pos[0], mouse_pos[1] = pygame.mouse.get_pos()
     mouse_button[0], mouse_button[1], mouse_button[2] = pygame.mouse.get_pressed(3)
 
+    # Reset player movements
+    player.direction[0] = 0
+    player.direction[1] = 0
+    player.direction[2] = 0
+    player.direction[3] = 0 
+
     # Draw game elements
     screen.fill(GREY)
     if not win and not lose:
         player.draw_shoots()
         boss.draw_fire_balls()
         boss.draw()
-        player.draw()
+        player.draw(mouse_pos)
     
     # Draw score
     score = font.render('Score: ' + str(score_text), True, BLACK)
