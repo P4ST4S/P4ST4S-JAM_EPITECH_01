@@ -114,26 +114,33 @@ class Enemy:
     def draw(self):
         screen.blit(self.img, self.rect)
 
+# Boss class
 class Boss:
     def __init__(self, width, height):
         self.img = boss_img
         self.rect = self.img.get_rect()
+        self.fire_balls = []
         self.rect.x = width / 2 - 50
         self.rect.y = height / 20
+        self.health = 100
     
+    def add_fire_balls(self, x, y):
+        self.fire_balls.append(Enemy(x, y))
+
     def draw(self):
         screen.blit(self.img, self.rect)
-        
 
+    def draw_fire_balls(self):
+        for enemy in self.fire_balls:
+            enemy.draw()
+        
+# Create player
 player = Player(height / 2 - player_img.get_width() /
                 2, width - player_img.get_height())
+
+# Create boss and his fireballs
 boss = Boss(width, height)
-enemies = []
-for i in range(5):
-    for j in range(5):
-        enemy = Enemy((width - enemy_img.get_width() * 5) / 2 +
-                      j * 100, i * 100 - height / 2)
-        enemies.append(enemy)
+boss.add_fire_balls(boss.rect.x, boss.rect.y)
 
 # Define game loop
 running = True
@@ -164,20 +171,23 @@ while running:
     # Update game elements
     for shoot in player.shoots:
         shoot.move()
-    for enemy in enemies:
+    for enemy in boss.fire_balls:
         enemy.move()
-        if enemy.rect.y > width:
-            lose = True
-            enemies.remove(enemy)
 
     # Check for collisions between shoots and enemies
     for shoot in player.shoots:
-        for enemy in enemies:
+        for enemy in boss.fire_balls:
             if shoot.rect.colliderect(enemy.rect):
                 score_text += 1
-                enemies.remove(enemy)
+                boss.fire_balls.remove(enemy)
                 player.shoots.remove(shoot)
                 break
+    
+    # Check for collisions between shoots and boss
+    for shoot in player.shoots:
+        if shoot.rect.colliderect(boss.rect):
+            boss.health -= 1
+            player.shoots.remove(shoot)
 
     # Get mouse position clicks
     mouse_pos[0], mouse_pos[1] = pygame.mouse.get_pos()
@@ -187,8 +197,7 @@ while running:
     screen.fill(GREY)
     if not win and not lose:
         player.draw_shoots()
-        for enemy in enemies:
-            enemy.draw()
+        boss.draw_fire_balls()
         boss.draw()
         player.draw()
     
@@ -196,7 +205,7 @@ while running:
     score = font.render('Score: ' + str(score_text), True, BLACK)
     screen.blit(score, (0, 0))
 
-    if len(enemies) == 0 and not lose:
+    if boss.health == 0 and not lose:
         win = True
 
     if win:
