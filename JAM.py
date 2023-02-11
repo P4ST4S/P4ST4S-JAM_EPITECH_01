@@ -21,7 +21,6 @@ GREY = (128, 128, 128)
 # Define speed of game elements
 player_speed = 5
 speed_shoot = 10
-speed_enemy = 2
 
 # Define mouse usage
 mouse_pos = [0, 0]
@@ -32,9 +31,12 @@ player_img = pygame.image.load('assets/player.png')
 player_img = pygame.transform.scale(player_img, (50, 50))
 boss_img = pygame.image.load('assets/boss.png')
 boss_img = pygame.transform.scale(boss_img, (100, 100))
-enemy_img = pygame.image.load('assets/fireBall.png')
-enemy_img = pygame.transform.scale(enemy_img, (50, 50))
-enemy_img = pygame.transform.rotate(enemy_img, 180)
+asteroid_img = pygame.image.load('assets/fireBall.png')
+asteroid_img = pygame.transform.scale(asteroid_img, (300, 300))
+asteroid_img = pygame.transform.rotate(asteroid_img, 180)
+fireBall_img = pygame.image.load('assets/fireBall.png')
+fireBall_img = pygame.transform.scale(fireBall_img, (50, 50))
+fireBall_img = pygame.transform.rotate(fireBall_img, 180)
 shoot_img = pygame.image.load('assets/shoot.png')
 shoot_img = pygame.transform.scale(shoot_img, (32, 40))
 
@@ -48,11 +50,15 @@ class Player:
         self.rect.x = x
         self.rect.y = y
 
-    def move_left(self):
-        self.rect.x -= player_speed
-
-    def move_right(self):
-        self.rect.x += player_speed
+    def move(self, direction):
+        if (direction[0]):
+            self.rect.x =- player_speed
+        if (direction[1]):
+            self.rect.x += player_speed
+        if (direction[2]):
+            self.rect.y =- player_speed
+        if (direction[3]):
+            self.rect.y += player_speed
 
     def shoot(self, dest):
         now = pygame.time.get_ticks()
@@ -94,18 +100,24 @@ class Shoot:
     def draw(self):
         screen.blit(self.img, self.rect)
 
-# Define enemy
-class Enemy:
-    def __init__(self, x, y):
-        self.img = enemy_img
+# Define fire balls
+class FireBall:
+    def __init__(self, x, y, health, speed, acceleration):
+        if (health < 10):
+            self.img = fireBall_img
+        else:
+            self.img = asteroid_img
         self.rect = self.img.get_rect()
         self.rect.x = x
         self.rect.y = y
         self.direction = 1
+        self.health = health
+        self.speed = speed
+        self.acceleration = acceleration
 
     def move(self):
-        self.rect.x += self.direction * speed_enemy
-        self.rect.y += speed_enemy
+        self.rect.x += self.direction * self.speed
+        self.rect.y += self.speed + random.randint(0, self.acceleration)
         if self.rect.x > height - self.rect.width or self.rect.x < 0:
             self.direction *= -1
         if random.randint(0, 100) < 5:
@@ -114,7 +126,7 @@ class Enemy:
     def draw(self):
         screen.blit(self.img, self.rect)
 
-# Boss class
+# Define boss
 class Boss:
     def __init__(self, width, height):
         self.img = boss_img
@@ -124,8 +136,16 @@ class Boss:
         self.rect.y = height / 20
         self.health = 100
     
-    def add_fire_balls(self, x, y):
-        self.fire_balls.append(Enemy(x, y))
+    def fire_rain(self, nbr):
+        for i in range(nbr):
+            self.fire_balls.append(FireBall(random.randint(0, width), -100, 3, 2, 5))
+    
+    def asteroid(self):
+        self.fire_balls.append(FireBall(boss.rect.x, -350, 25, 1, 2))
+    
+    def apocalypse(self):
+        self.asteroid()
+        self.fire_rain(30)
 
     def draw(self):
         screen.blit(self.img, self.rect)
@@ -135,12 +155,11 @@ class Boss:
             enemy.draw()
         
 # Create player
-player = Player(height / 2 - player_img.get_width() /
-                2, width - player_img.get_height())
+player = Player(width / 2 - player_img.get_width() / 2, height - player_img.get_height())
 
 # Create boss and his fireballs
 boss = Boss(width, height)
-boss.add_fire_balls(boss.rect.x, boss.rect.y)
+boss.apocalypse()
 
 # Define game loop
 running = True
@@ -176,10 +195,12 @@ while running:
 
     # Check for collisions between shoots and enemies
     for shoot in player.shoots:
-        for enemy in boss.fire_balls:
-            if shoot.rect.colliderect(enemy.rect):
-                score_text += 1
-                boss.fire_balls.remove(enemy)
+        for fireball in boss.fire_balls:
+            if shoot.rect.colliderect(fireball.rect):
+                fireball.health -= 1
+                if (fireball.health <= 0):
+                    score_text += 1
+                    boss.fire_balls.remove(fireball)
                 player.shoots.remove(shoot)
                 break
     
@@ -187,6 +208,16 @@ while running:
     for shoot in player.shoots:
         if shoot.rect.colliderect(boss.rect):
             boss.health -= 1
+            player.shoots.remove(shoot)
+
+    #Check if fire balls are out of screen
+    for fireball in boss.fire_balls:
+        if fireball.rect.y > height:
+            boss.fire_balls.remove(fireball)
+    
+    #Check if shoots are out of screen
+    for shoot in player.shoots:
+        if shoot.rect.y + shoot.rect.height < 0 or shoot.rect.y > height or shoot.rect.x > width or shoot.rect.x + shoot.rect.width < 0:
             player.shoots.remove(shoot)
 
     # Get mouse position clicks
