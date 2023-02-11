@@ -1,5 +1,6 @@
 import pygame
 import random
+import math
 
 # Initialize pygame
 pygame.init()
@@ -19,6 +20,10 @@ player_speed = 5
 speed_shoot = 10
 speed_enemy = 1
 
+# Define mouse usage
+mouse_pos = [0, 0]
+mouse_button = [0, 0, 0] # lclic, scroll clic, rclic
+
 # Load images
 player_img = pygame.image.load('assets/player.png')
 player_img = pygame.transform.scale(player_img, (50, 50))
@@ -28,8 +33,6 @@ shoot_img = pygame.image.load('assets/shoot.png')
 shoot_img = pygame.transform.scale(shoot_img, (10, 20))
 
 # Define player
-
-
 class Player:
     def __init__(self, x, y):
         self.img = player_img
@@ -43,23 +46,27 @@ class Player:
     def move_right(self):
         self.rect.x += player_speed
 
-    def shoot(self):
-        return Shoot(self.rect.x + self.rect.width / 2 - shoot_img.get_width() / 2, self.rect.y)
+    def shoot(self, dest):
+        return Shoot(self.rect.x + self.rect.width / 2 - shoot_img.get_width() / 2, self.rect.y, dest)
 
 
 # Define shoot
 
 
 class Shoot:
-    def __init__(self, x, y):
+    def __init__(self, x, y, dest):
         self.img = shoot_img
         self.rect = self.img.get_rect()
         self.rect.x = x
         self.rect.y = y
+        self.speed_x = (dest[0] - x) / math.sqrt(math.pow(dest[0] - x, 2) + math.pow(dest[1] - y, 2)) * speed_shoot
+        self.speed_y = (dest[1] - y) / math.sqrt(math.pow(dest[0] - x, 2) + math.pow(dest[1] - y, 2)) * speed_shoot
+        self.dest = dest
 
     def move(self):
-        self.rect.y -= speed_shoot
-
+        self.rect.x += self.speed_x
+        self.rect.y += self.speed_y
+        
     def draw(self):
         screen.blit(self.img, self.rect)
 
@@ -112,11 +119,11 @@ while running:
         player.move_left()
     if keys[pygame.K_RIGHT] and player.rect.x < height - player.rect.width:
         player.move_right()
-    if keys[pygame.K_SPACE]:
+    if mouse_button[0]:
         now = pygame.time.get_ticks()
         if now - last_shoot > 500:
             last_shoot = now
-            shoots.append(player.shoot())
+            shoots.append(player.shoot(mouse_pos))
 
     # Update game elements
     for shoot in shoots:
@@ -133,6 +140,10 @@ while running:
                 enemies.remove(enemy)
                 shoots.remove(shoot)
                 break
+
+    # Get mouse position clicks
+    mouse_pos[0], mouse_pos[1] = pygame.mouse.get_pos()
+    mouse_button[0], mouse_button[1], mouse_button[2] = pygame.mouse.get_pressed(3)
 
     # Draw game elements
     screen.fill(RED)
