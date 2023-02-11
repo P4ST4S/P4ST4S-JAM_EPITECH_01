@@ -20,7 +20,7 @@ GREY = (128, 128, 128)
 # Define speed of game elements
 player_speed = 5
 speed_shoot = 10
-speed_enemy = 1
+speed_enemy = 10
 
 # Load images
 player_img = pygame.image.load('assets/player.png')
@@ -103,6 +103,8 @@ for i in range(5):
 running = True
 clock = pygame.time.Clock()
 last_shoot = 0
+win = False
+lose = False
 while running:
     # Set framerate
     clock.tick(30)
@@ -133,6 +135,7 @@ while running:
     for enemy in enemies:
         enemy.move()
         if enemy.rect.y > width:
+            lose = True
             enemies.remove(enemy)
 
     # Check for collisions between shoots and enemies
@@ -146,15 +149,28 @@ while running:
 
     # Draw game elements
     screen.fill(GREY)
-    screen.blit(player.img, player.rect)
-    for shoot in shoots:
-        shoot.draw()
-    for enemy in enemies:
-        enemy.draw()
+    if not win and not lose:
+        screen.blit(player.img, player.rect)
+        for shoot in shoots:
+            shoot.draw()
+        for enemy in enemies:
+            enemy.draw()
 
     # Draw score
     score = font.render('Score: ' + str(score_text), True, BLACK)
     screen.blit(score, (0, 0))
+
+    if len(enemies) == 0 and not lose:
+        win = True
+
+    if win:
+        win_text = font.render('You win!', True, BLACK)
+        screen.blit(win_text, (width / 1.5 - win_text.get_width() /
+                    2, height / 3 - win_text.get_height() / 2))
+    elif lose:
+        lose_text = font.render('You lose!', True, BLACK)
+        screen.blit(lose_text, (width / 1.5 - lose_text.get_width() /
+                    2, height / 3 - lose_text.get_height() / 2))
 
     # Update display
     pygame.display.update()
