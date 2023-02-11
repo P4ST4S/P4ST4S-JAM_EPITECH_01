@@ -9,16 +9,19 @@ pygame.init()
 height = 800
 width = 600
 screen = pygame.display.set_mode((height, width))
+font = pygame.font.SysFont(None, 30)
+score_text = 0
 
 # Define colors
 WHITE = (255, 255, 255)
 BLACK = (0, 0, 0)
 RED = (255, 0, 0)
+GREY = (128, 128, 128)
 
 # Define speed of game elements
 player_speed = 5
 speed_shoot = 10
-speed_enemy = 1
+speed_enemy = 10
 
 # Define mouse usage
 mouse_pos = [0, 0]
@@ -79,9 +82,15 @@ class Enemy:
         self.rect = self.img.get_rect()
         self.rect.x = x
         self.rect.y = y
+        self.direction = 1
 
     def move(self):
+        self.rect.x += self.direction * speed_enemy
         self.rect.y += speed_enemy
+        if self.rect.x > height - self.rect.width or self.rect.x < 0:
+            self.direction *= -1
+        if random.randint(0, 100) < 5:
+            self.direction *= -1
 
     def draw(self):
         screen.blit(self.img, self.rect)
@@ -93,7 +102,7 @@ shoots = []
 enemies = []
 for i in range(5):
     for j in range(5):
-        enemy = Enemy(width / 2 - enemy_img.get_width() +
+        enemy = Enemy((width - enemy_img.get_width() * 5) / 2 +
                       j * 100, i * 100 - height / 2)
         enemies.append(enemy)
 
@@ -101,6 +110,8 @@ for i in range(5):
 running = True
 clock = pygame.time.Clock()
 last_shoot = 0
+win = False
+lose = False
 while running:
     # Set framerate
     clock.tick(30)
@@ -131,12 +142,14 @@ while running:
     for enemy in enemies:
         enemy.move()
         if enemy.rect.y > width:
+            lose = True
             enemies.remove(enemy)
 
     # Check for collisions between shoots and enemies
     for shoot in shoots:
         for enemy in enemies:
             if shoot.rect.colliderect(enemy.rect):
+                score_text += 1
                 enemies.remove(enemy)
                 shoots.remove(shoot)
                 break
@@ -146,12 +159,29 @@ while running:
     mouse_button[0], mouse_button[1], mouse_button[2] = pygame.mouse.get_pressed(3)
 
     # Draw game elements
-    screen.fill(RED)
-    screen.blit(player.img, player.rect)
-    for shoot in shoots:
-        shoot.draw()
-    for enemy in enemies:
-        enemy.draw()
+    screen.fill(GREY)
+    if not win and not lose:
+        screen.blit(player.img, player.rect)
+        for shoot in shoots:
+            shoot.draw()
+        for enemy in enemies:
+            enemy.draw()
+
+    # Draw score
+    score = font.render('Score: ' + str(score_text), True, BLACK)
+    screen.blit(score, (0, 0))
+
+    if len(enemies) == 0 and not lose:
+        win = True
+
+    if win:
+        win_text = font.render('You win!', True, BLACK)
+        screen.blit(win_text, (width / 1.5 - win_text.get_width() /
+                    2, height / 3 - win_text.get_height() / 2))
+    elif lose:
+        lose_text = font.render('You lose!', True, BLACK)
+        screen.blit(lose_text, (width / 1.5 - lose_text.get_width() /
+                    2, height / 3 - lose_text.get_height() / 2))
 
     # Update display
     pygame.display.update()
