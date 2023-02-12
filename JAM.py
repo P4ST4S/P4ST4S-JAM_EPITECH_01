@@ -19,7 +19,7 @@ RED = (255, 0, 0)
 GREY = (128, 128, 128)
 
 # Define speed of game elements
-player_speed = 5
+player_speed = 7
 npc_speed = 3
 speed_shoot = 10
 
@@ -38,12 +38,25 @@ girl_side = pygame.image.load('assets/girl_side.png')
 girl_side = pygame.transform.scale(girl_side, (50, 50))
 boss_img = pygame.image.load('assets/boss.png')
 boss_img = pygame.transform.scale(boss_img, (100, 100))
+boss_incant = pygame.image.load('assets/boss_incant.png')
+boss_incant = pygame.transform.scale(boss_incant, (100, 100))
+boss_phase2 = pygame.image.load('assets/boss_phase2.png')
+boss_phase2 = pygame.transform.scale(boss_phase2, (100, 100))
+boss_p2_incant = pygame.image.load('assets/boss_p2_incant.png')
+boss_p2_incant = pygame.transform.scale(boss_p2_incant, (100, 100))
+boss_dead = pygame.image.load('assets/boss_dead.png')
+boss_dead = pygame.transform.scale(boss_dead, (100, 100))
+boss_transi = pygame.image.load('assets/boss_transi.png')
+boss_transi = pygame.transform.scale(boss_transi, (100, 100))
 asteroid_img = pygame.image.load('assets/fireBall.png')
 asteroid_img = pygame.transform.scale(asteroid_img, (300, 300))
 asteroid_img = pygame.transform.rotate(asteroid_img, 180)
 fireBall_img = pygame.image.load('assets/fireBall.png')
 fireBall_img = pygame.transform.scale(fireBall_img, (50, 50))
 fireBall_img = pygame.transform.rotate(fireBall_img, 180)
+fireBall_exp = pygame.image.load('assets/fireBall_explosion.png')
+fireBall_exp = pygame.transform.scale(fireBall_exp, (50, 50))
+fireBall_exp = pygame.transform.rotate(fireBall_exp, 180)
 shoot_img = pygame.image.load('assets/shoot.png')
 shoot_img = pygame.transform.scale(shoot_img, (32, 40))
 
@@ -134,45 +147,118 @@ class FireBall:
         self.health = health
         self.speed = speed
         self.acceleration = acceleration
+        self.destroyed = 0
+        self.dest_countdown = 0
 
     def move(self):
-        self.rect.x += self.direction * self.speed
-        self.rect.y += self.speed + random.randint(0, self.acceleration)
-        if self.rect.x > height - self.rect.width or self.rect.x < 0:
-            self.direction *= -1
-        if random.randint(0, 100) < 5:
-            self.direction *= -1
+        if (self.destroyed == 0):
+            self.rect.x += self.direction * self.speed
+            self.rect.y += self.speed + random.randint(0, self.acceleration)
+            if self.rect.x > height - self.rect.width or self.rect.x < 0:
+                self.direction *= -1
+            if random.randint(0, 100) < 5:
+                self.direction *= -1
 
     def draw(self):
+        if (self.destroyed == 1):
+            self.dest_countdown += 1
         screen.blit(self.img, self.rect)
+    
+    def destroy(self):
+        self.destroyed = 1
+        self.img = fireBall_exp
 
 # Define boss
 class Boss:
     def __init__(self, width, height):
         self.img = boss_img
+        self.incant = boss_incant
+        self.phase2 = boss_phase2
+        self.dead = boss_dead
+        self.transi_img = boss_transi
+        self.p2_incant = boss_p2_incant
+        self.animation = 0
         self.rect = self.img.get_rect()
         self.fire_balls = []
         self.rect.x = width / 2 - 50
         self.rect.y = height / 20
-        self.health = 100
+        self.health = 10
+        self.phase = 0
+        self.ticks = 0
+        self.count_incant = 0
+        self.count_transi = 0
+        self.transi = False
     
+    def fire_descent(self, x):
+        self.fire_balls.append(FireBall(x, -100, 3, 2, 2))
+
     def fire_rain(self, nbr):
         for i in range(nbr):
             self.fire_balls.append(FireBall(random.randint(0, width), -100, 3, 2, 5))
     
-    def asteroid(self):
-        self.fire_balls.append(FireBall(boss.rect.x, -350, 25, 1, 2))
+    def asteroid(self, x):
+        self.fire_balls.append(FireBall(x, -350, 25, 1, 2))
     
-    def apocalypse(self):
-        self.asteroid()
-        self.fire_rain(30)
+    def apocalypse(self, nbr):
+        self.asteroid(self.rect.x)
+        self.fire_rain(nbr)
+
+    def phase_one(self):
+        if (self.ticks % 30 == 0):
+            self.fire_descent(self.ticks % width)
+        if (self.ticks % 250 == 0 and self.ticks != 0):
+            self.animation = 1
+            self.count_incant = 50
+            self.fire_rain(int(10 + self.ticks / 100))
+        if (self.ticks % 500 == 0 and self.ticks != 0):
+            self.animation = 1
+            self.count_incant = 150
+            self.asteroid(girl.rect.x)
+        self.ticks += 1
+        self.count_incant -= 1
+        if (self.count_incant <= 0 and self.animation != 0):
+            self.animation = 0
+
+    def transition(self):
+        self.transi = True
+        if (self.count_transi < 500):
+            if (self.count_transi <= 300):
+                for fireball in self.fire_balls:
+                    self.fire_balls.remove(fireball)
+            if (self.count_transi == 300):
+                self.fire_descent(self.rect.x)
+            self.animation = 4
+        if (self.count_transi >= 500):
+            if (self.count_transi == 500 or self.count_transi % 10 == 0):
+                self.fire_descent(random.randint(0, width))
+            self.animation = 5
+        if (self.count_transi == 1000):
+            self.animation = 2
+            self.health = 10000
+            self.phase = 1
+            self.transi = False
+        self.count_transi += 1
 
     def draw(self):
-        screen.blit(self.img, self.rect)
+        if (self.animation == 0):
+            screen.blit(self.img, self.rect)
+        if (self.animation == 1):
+            screen.blit(self.incant, self.rect)
+        if (self.animation == 2):
+            screen.blit(self.phase2, self.rect)
+        if (self.animation == 3):
+            screen.blit(self.p2_incant, self.rect)
+        if (self.animation == 4):
+            screen.blit(self.dead, self.rect)
+        if (self.animation == 5):
+            screen.blit(self.transi_img, self.rect)
+
+
 
     def draw_fire_balls(self):
         for enemy in self.fire_balls:
             enemy.draw()
+
 
 # Create NPC
 
@@ -197,17 +283,26 @@ class NPC:
             self.direction = random.randint(0, 1)
             self.wait = random.randint(30, 60)
         if (self.movement > 0 and self.direction):
-            self.animation = 2
-            self.rect.x -= npc_speed
-            if (self.rect.x < 0):
-                self.rect.x = 0
+            self.move_left()
         elif (self.movement > 0 and self.direction == 0):
-            self.animation = 1
-            self.rect.x += npc_speed
-            if (self.rect.x + self.rect.width > width):
-                self.rect.x = width - self.rect.width
+            self.move_right()
         self.movement -= 1
         self.wait -= 1
+
+    def move_left(self):
+        self.animation = 2
+        self.rect.x -= npc_speed
+        if (self.rect.x < 0):
+            self.rect.x = 0
+        
+    def move_right(self):
+        self.animation = 1
+        self.rect.x += npc_speed
+        if (self.rect.x + self.rect.width > width):
+            self.rect.x = width - self.rect.width
+    
+    def idle(self):
+        self.animation = 0
 
     def draw(self):
         if (self.animation == 0):
@@ -216,6 +311,10 @@ class NPC:
             screen.blit(self.img_side, self.rect)
         else:
             screen.blit(self.img_side_reverse, self.rect)
+
+    def boss_transi_move(self):
+        if (self.rect.x < width / 2):
+            self.move_right()
 
 # Create player
 player = Player(width / 2 - plyr_back.get_width() / 2, height - plyr_back.get_height())
@@ -226,11 +325,26 @@ boss = Boss(width, height)
 # Create NPCs
 girl = NPC(0, height - girl_img.get_height(), girl_img, girl_side)
 
+# Intro functions
+def intro_func(player, boss, girl, intro_ticks):
+    if (intro_ticks == 0):
+        boss.fire_descent(boss.rect.x)
+        player.rect.x = -450
+        girl.rect.x = width / 2 + girl.rect.width / 2
+        player.rect.y = height - 100
+    girl.move_left()
+    girl.move_left()
+    if (girl.rect.x == 0):
+        girl.idle()
+    player.rect.x += 10
+
 # Define game loop
 running = True
 clock = pygame.time.Clock()
 win = False
 lose = False
+intro = True
+intro_ticks = 0
 while running:
     # Set framerate
     clock.tick(30)
@@ -242,26 +356,39 @@ while running:
         elif event.type == pygame.KEYDOWN:
             if event.key == pygame.K_ESCAPE:
                 running = False
+    
+    # Intro at the begining of the program
+    if (intro == True):
+        intro_func(player, boss, girl, intro_ticks)
+        intro_ticks += 1
+        if (intro_ticks == 70):
+            intro = False
 
     # Check for pressed keys
-    keys = pygame.key.get_pressed()
-    if keys[pygame.K_q] and player.rect.x > 0:
-        player.direction[0] = 1
-    if keys[pygame.K_d] and player.rect.x < height - player.rect.width:
-        player.direction[1] = 1
-    if keys[pygame.K_z] and player.rect.x > 0:
-        player.direction[2] = 1
-    if keys[pygame.K_s] and player.rect.x < height - player.rect.width:
-        player.direction[3] = 1
-    if mouse_button[0]:
-        player.shoot(mouse_pos)
+    if (intro == False):
+        keys = pygame.key.get_pressed()
+        if keys[pygame.K_q] and player.rect.x > 0:
+            player.direction[0] = 1
+        if keys[pygame.K_d] and player.rect.x < height - player.rect.width:
+            player.direction[1] = 1
+        if keys[pygame.K_z] and player.rect.x > 0:
+            player.direction[2] = 1
+        if keys[pygame.K_s] and player.rect.x < height - player.rect.width:
+            player.direction[3] = 1
+        if mouse_button[0]:
+            player.shoot(mouse_pos)
+        if(boss.phase == 0 and boss.transi == False):
+            boss.phase_one()
+        if (boss.phase == 1):
+            boss.phase_two()
 
-    if (len(boss.fire_balls) == 0):
-        boss.apocalypse()
+    # Start phase 2 when boss is low
+    if (boss.phase == 0 and boss.health < 20):
+        girl.boss_transi_move()
+        boss.transition()
 
     # Update game elements
     player.move()
-    girl.move()
     for shoot in player.shoots:
         shoot.move()
     for enemy in boss.fire_balls:
@@ -270,23 +397,25 @@ while running:
     # Check for collisions between shoots and fire balls
     for shoot in player.shoots:
         for fireball in boss.fire_balls:
-            if shoot.rect.colliderect(fireball.rect):
+            if (fireball.dest_countdown >= 20):
+                boss.fire_balls.remove(fireball)
+            if (fireball.destroyed == 0 and shoot.rect.colliderect(fireball.rect)):
+                score_text += 1
                 fireball.health -= 1
                 if (fireball.health <= 0):
-                    score_text += 1
-                    boss.fire_balls.remove(fireball)
+                    fireball.destroy()
                 player.shoots.remove(shoot)
                 break
     
     # Check for collision between fire balls and friendly entities
     for fireball in boss.fire_balls:
-        if fireball.rect.colliderect(player.rect) or fireball.rect.colliderect(girl.rect):
+        if (fireball.destroyed == 0 and fireball.rect.colliderect(player.rect) or fireball.rect.colliderect(girl.rect)):
             lose = True
             break
     
     # Check for collisions between shoots and boss
     for shoot in player.shoots:
-        if shoot.rect.colliderect(boss.rect):
+        if (boss.transi == False and shoot.rect.colliderect(boss.rect)):
             boss.health -= 1
             player.shoots.remove(shoot)
 
@@ -318,7 +447,6 @@ while running:
         boss.draw()
         girl.draw()
         player.draw(mouse_pos)
-
     
     # Draw score
     score = font.render('Score: ' + str(score_text), True, BLACK)
