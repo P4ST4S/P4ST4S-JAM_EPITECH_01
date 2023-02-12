@@ -22,12 +22,16 @@ GREY = (128, 128, 128)
 player_speed = 7
 npc_speed = 3
 speed_shoot = 10
+bat_damage = 500
 
 # Define mouse usage
 mouse_pos = [0, 0]
 mouse_button = [0, 0, 0] # lclic, scroll clic, rclic
 
 # Load images
+background = pygame.image.load('assets/backGround.png')
+background = pygame.transform.scale(background, (600, 800))
+background_rect = background.get_rect()
 plyr_back = pygame.image.load('assets/plyr_back.png')
 plyr_back = pygame.transform.scale(plyr_back, (50, 50))
 plyr_front = pygame.image.load('assets/plyr_front.png')
@@ -59,6 +63,13 @@ fireBall_exp = pygame.transform.scale(fireBall_exp, (50, 50))
 fireBall_exp = pygame.transform.rotate(fireBall_exp, 180)
 shoot_img = pygame.image.load('assets/shoot.png')
 shoot_img = pygame.transform.scale(shoot_img, (32, 40))
+bat_img = pygame.image.load('assets/bat.png')
+bat_img = pygame.transform.scale(bat_img, (50, 50))
+bat_red = pygame.image.load('assets/bat_red.png')
+bat_red = pygame.transform.scale(bat_red, (50, 50))
+bat_blue = pygame.image.load('assets/bat_blue.png')
+bat_blue = pygame.transform.scale(bat_blue, (50, 50))
+
 
 # Define player
 class Player:
@@ -89,11 +100,13 @@ class Player:
             if (self.rect.y + self.rect.height > height):
                 self.rect.y = height - self.rect.height
 
-    def shoot(self, dest):
+    def shoot(self, dest, damage):
         now = pygame.time.get_ticks()
         if now - self.last_shoot > 50:
             self.last_shoot = now
-            self.shoots.append(Shoot(self.rect.x + self.rect.width / 2 - shoot_img.get_width() / 2, self.rect.y, dest))
+            if (boss.phase == 1):
+                damage * 3
+            self.shoots.append(Shoot(self.rect.x + self.rect.width / 2 - shoot_img.get_width() / 2, self.rect.y, dest, damage))
 
     def draw(self, mouse):
         if (self.rect.y > mouse[1]):
@@ -115,7 +128,7 @@ def get_rotate_angle(vect):
     return rotation
 
 class Shoot:
-    def __init__(self, x, y, dest):
+    def __init__(self, x, y, dest, damage):
         self.vect = [dest[0] - x, dest[1] - y]
         self.norm_vect = [math.sqrt(math.pow(self.vect[0], 2) + math.pow(self.vect[1], 2)), math.sqrt(math.pow(self.vect[0], 2) + math.pow(self.vect[1], 2))]
         self.speed_x = self.vect[0] / self.norm_vect[0] * speed_shoot
@@ -125,6 +138,7 @@ class Shoot:
         self.rect = self.img.get_rect()
         self.rect.x = x
         self.rect.y = y
+        self.damage = damage
 
     def move(self):
         self.rect.x += self.speed_x
@@ -152,10 +166,7 @@ class FireBall:
 
     def move(self):
         if (self.destroyed == 0):
-            self.rect.x += self.direction * self.speed
             self.rect.y += self.speed + random.randint(0, self.acceleration)
-            if self.rect.x > height - self.rect.width or self.rect.x < 0:
-                self.direction *= -1
             if random.randint(0, 100) < 5:
                 self.direction *= -1
 
@@ -182,7 +193,7 @@ class Boss:
         self.fire_balls = []
         self.rect.x = width / 2 - 50
         self.rect.y = height / 20
-        self.health = 10
+        self.health = 100
         self.phase = 0
         self.ticks = 0
         self.count_incant = 0
@@ -194,10 +205,10 @@ class Boss:
 
     def fire_rain(self, nbr):
         for i in range(nbr):
-            self.fire_balls.append(FireBall(random.randint(0, width), -100, 3, 2, 5))
+            self.fire_balls.append(FireBall(random.randint(0, width), -100, 2, 2, 5))
     
     def asteroid(self, x):
-        self.fire_balls.append(FireBall(x, -350, 25, 1, 2))
+        self.fire_balls.append(FireBall(x, -350, 15, 1, 2))
     
     def apocalypse(self, nbr):
         self.asteroid(self.rect.x)
@@ -218,6 +229,21 @@ class Boss:
         self.count_incant -= 1
         if (self.count_incant <= 0 and self.animation != 0):
             self.animation = 0
+
+    def phase_two(self):
+        if (self.ticks % 20 == 0):
+            self.fire_descent(self.ticks % width)
+        if (self.ticks % 200 == 0 and self.ticks != 0):
+            self.animation = 2
+            self.apocalypse(20)
+        if (self.ticks % 400 == 0 and self.ticks != 0):
+            self.animation = 3
+            self.count_incant = 150
+            self.asteroid(30)
+        self.ticks += 1
+        self.count_incant -= 1
+        if (self.count_incant <= 0 and self.animation != 2):
+            self.animation = 2
 
     def transition(self):
         self.transi = True
@@ -253,15 +279,11 @@ class Boss:
         if (self.animation == 5):
             screen.blit(self.transi_img, self.rect)
 
-
-
     def draw_fire_balls(self):
         for enemy in self.fire_balls:
             enemy.draw()
 
-
 # Create NPC
-
 class NPC:
     def __init__(self, x, y, img, img_side):
         self.img = img
@@ -316,6 +338,46 @@ class NPC:
         if (self.rect.x < width / 2):
             self.move_right()
 
+# Define Bat Class
+class Bat:
+    def __init__(self):
+        self.img = bat_img
+        self.red = bat_red
+        self.blue = bat_blue
+        self.rect = self.img.get_rect()
+        self.rect.x = width + 50
+        self.rect.y = height / 2
+        self.animation = 0
+        self.count_shoot = 0
+    
+    def convert_red(self):
+        self.animation = 1
+
+    def convert_blue(self):
+        self.animation = 2
+
+    def shoot(self):
+        if (self.count_shoot % 20 == 0):
+            if (self.animation == 2):
+                player.shoot((boss.rect.x + 50, boss.rect.y + 50) , 1000)
+        if (self.count_shoot % 500 == 0):
+            if (self.animation == 1):
+                boss.fire_descent(boss.rect.x)
+
+    def move_in(self):
+        if (boss.transi == True):
+            if (self.rect.x > width - 50):
+                self.rect.x -= 5
+
+    def draw(self):
+        self.count_shoot += 1
+        if (self.animation == 0):
+            screen.blit(self.img, self.rect)
+        if (self.animation == 1):
+            screen.blit(self.red, self.rect)
+        if (self.animation == 2):
+            screen.blit(self.blue, self.rect)
+
 # Create player
 player = Player(width / 2 - plyr_back.get_width() / 2, height - plyr_back.get_height())
 
@@ -324,6 +386,9 @@ boss = Boss(width, height)
 
 # Create NPCs
 girl = NPC(0, height - girl_img.get_height(), girl_img, girl_side)
+
+# Create Bat
+bat = Bat()
 
 # Intro functions
 def intro_func(player, boss, girl, intro_ticks):
@@ -376,9 +441,9 @@ while running:
         if keys[pygame.K_s] and player.rect.x < height - player.rect.width:
             player.direction[3] = 1
         if mouse_button[0]:
-            player.shoot(mouse_pos)
-        if(boss.phase == 0 and boss.transi == False):
-            boss.phase_one()
+            player.shoot(mouse_pos, 1)
+        #if(boss.phase == 0 and boss.transi == False):
+            #boss.phase_one()
         if (boss.phase == 1):
             boss.phase_two()
 
@@ -389,6 +454,10 @@ while running:
 
     # Update game elements
     player.move()
+    bat.move_in()
+    if (boss.phase == 1):
+        girl.move()
+        bat.shoot()
     for shoot in player.shoots:
         shoot.move()
     for enemy in boss.fire_balls:
@@ -401,11 +470,12 @@ while running:
                 boss.fire_balls.remove(fireball)
             if (fireball.destroyed == 0 and shoot.rect.colliderect(fireball.rect)):
                 score_text += 1
-                fireball.health -= 1
+                fireball.health -= shoot.damage
                 if (fireball.health <= 0):
                     fireball.destroy()
-                player.shoots.remove(shoot)
-                break
+                if (shoot.damage != bat_damage):
+                    player.shoots.remove(shoot)
+                    break
     
     # Check for collision between fire balls and friendly entities
     for fireball in boss.fire_balls:
@@ -418,6 +488,16 @@ while running:
         if (boss.transi == False and shoot.rect.colliderect(boss.rect)):
             boss.health -= 1
             player.shoots.remove(shoot)
+
+    # Check for collision between entities and bat
+    if (bat.animation != 2):
+        for shoot in player.shoots:
+            if (shoot.rect.colliderect(bat.rect)):
+                bat.animation = 2
+    if (bat.animation != 1):
+        for fireball in boss.fire_balls:
+            if (fireball.rect.colliderect(bat.rect)):
+                bat.animation = 1
 
     #Check if fire balls are out of screen
     for fireball in boss.fire_balls:
@@ -441,11 +521,13 @@ while running:
 
     # Draw game elements
     screen.fill(GREY)
+    #screen.blit(background, background_rect)
     if not win and not lose:
         player.draw_shoots()
         boss.draw_fire_balls()
         boss.draw()
         girl.draw()
+        bat.draw()
         player.draw(mouse_pos)
     
     # Draw score
