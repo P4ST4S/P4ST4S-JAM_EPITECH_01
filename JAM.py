@@ -193,7 +193,7 @@ class Boss:
         self.fire_balls = []
         self.rect.x = width / 2 - 50
         self.rect.y = height / 20
-        self.health = 100
+        self.health = 150
         self.phase = 0
         self.ticks = 0
         self.count_incant = 0
@@ -205,7 +205,7 @@ class Boss:
 
     def fire_rain(self, nbr):
         for i in range(nbr):
-            self.fire_balls.append(FireBall(random.randint(0, width), -100, 2, 2, 5))
+            self.fire_balls.append(FireBall(random.randint(0, width - 50), -100, 2, 2, 5))
     
     def asteroid(self, x):
         self.fire_balls.append(FireBall(x, -350, 15, 1, 2))
@@ -216,7 +216,7 @@ class Boss:
 
     def phase_one(self):
         if (self.ticks % 30 == 0):
-            self.fire_descent(self.ticks % width)
+            self.fire_descent(self.ticks % width - 50)
         if (self.ticks % 250 == 0 and self.ticks != 0):
             self.animation = 1
             self.count_incant = 50
@@ -232,14 +232,14 @@ class Boss:
 
     def phase_two(self):
         if (self.ticks % 20 == 0):
-            self.fire_descent(self.ticks % width)
-        if (self.ticks % 200 == 0 and self.ticks != 0):
+            self.fire_descent(self.ticks % width - 50)
+        if (self.ticks % 150 == 0 and self.ticks != 0):
             self.animation = 2
             self.fire_rain(10)
-        if (self.ticks % 500 == 0 and self.ticks != 0):
+        if (self.ticks % 400 == 0 and self.ticks != 0):
             self.animation = 3
             self.count_incant = 150
-            self.apocalypse(20)
+            self.apocalypse(10)
         self.ticks += 1
         self.count_incant -= 1
         if (self.count_incant <= 0 and self.animation != 2):
@@ -247,18 +247,18 @@ class Boss:
 
     def transition(self):
         self.transi = True
-        if (self.count_transi < 500):
-            if (self.count_transi <= 300):
+        if (self.count_transi < 300):
+            if (self.count_transi <= 250):
                 for fireball in self.fire_balls:
                     self.fire_balls.remove(fireball)
-            if (self.count_transi == 300):
+            if (self.count_transi == 250):
                 self.fire_descent(self.rect.x)
             self.animation = 4
-        if (self.count_transi >= 500):
-            if (self.count_transi == 500 or self.count_transi % 10 == 0):
-                self.fire_descent(random.randint(0, width))
+        if (self.count_transi >= 300):
+            if (self.count_transi == 300 or self.count_transi % 10 == 0):
+                self.fire_descent(random.randint(0, width - 50))
             self.animation = 5
-        if (self.count_transi == 1000):
+        if (self.count_transi == 800):
             self.animation = 2
             self.health = 10000
             self.phase = 1
@@ -309,7 +309,7 @@ class NPC:
         elif (self.movement > 0 and self.direction == 0):
             self.move_right()
         if (self.rect.x < width / 2):
-            self.rect = width / 2
+            self.rect.x = width / 2
         self.movement -= 1
         self.wait -= 1
 
@@ -362,9 +362,6 @@ class Bat:
         if (self.count_shoot % 20 == 0):
             if (self.animation == 2):
                 player.shoot((boss.rect.x + 50, boss.rect.y + 50) , 1000)
-        if (self.count_shoot % 500 == 0):
-            if (self.animation == 1):
-                boss.fire_descent(boss.rect.x)
 
     def move_in(self):
         if (boss.transi == True):
@@ -479,16 +476,12 @@ while running:
                     player.shoots.remove(shoot)
                     break
     
-    # Check for collision between fire balls and friendly entities
-    for fireball in boss.fire_balls:
-        if (fireball.destroyed == 0 and fireball.rect.colliderect(player.rect) or fireball.rect.colliderect(girl.rect)):
-            lose = True
-            break
-    
     # Check for collisions between shoots and boss
     for shoot in player.shoots:
         if (boss.transi == False and shoot.rect.colliderect(boss.rect)):
             boss.health -= shoot.damage
+            if (boss.phase == 1 and bat.animation == 2):
+                boss.health -= 80
             player.shoots.remove(shoot)
 
     # Check for collision between entities and bat
@@ -510,6 +503,12 @@ while running:
     for shoot in player.shoots:
         if shoot.rect.y + shoot.rect.height < 0 or shoot.rect.y > height or shoot.rect.x > width or shoot.rect.x + shoot.rect.width < 0:
             player.shoots.remove(shoot)
+
+    # Check for collision between fire balls and friendly entities
+    for fireball in boss.fire_balls:
+        if (fireball.destroyed == 0 and fireball.rect.colliderect(player.rect) or fireball.rect.colliderect(girl.rect)):
+            lose = True
+            break
 
     # Get mouse position clicks
     mouse_pos[0], mouse_pos[1] = pygame.mouse.get_pos()
@@ -536,16 +535,16 @@ while running:
     score = font.render('Score: ' + str(score_text), True, BLACK)
     screen.blit(score, (0, 0))
 
-    if boss.health == 0 and not lose:
+    if boss.health <= 0 and not lose:
         win = True
 
     if win:
         win_text = font.render('You win!', True, BLACK)
-        screen.blit(win_text, (width / 2.5 - win_text.get_width() /
+        screen.blit(win_text, (width / 2 - win_text.get_width() /
                     2, height / 3 - win_text.get_height() / 2))
     elif lose:
         lose_text = font.render('You lose!', True, BLACK)
-        screen.blit(lose_text, (width / 2.5 - lose_text.get_width() /
+        screen.blit(lose_text, (width / 2 - lose_text.get_width() /
                     2, height / 3 - lose_text.get_height() / 2))
 
     # Update display
