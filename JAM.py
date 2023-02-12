@@ -235,11 +235,11 @@ class Boss:
             self.fire_descent(self.ticks % width)
         if (self.ticks % 200 == 0 and self.ticks != 0):
             self.animation = 2
-            self.apocalypse(20)
-        if (self.ticks % 400 == 0 and self.ticks != 0):
+            self.fire_rain(10)
+        if (self.ticks % 500 == 0 and self.ticks != 0):
             self.animation = 3
             self.count_incant = 150
-            self.asteroid(30)
+            self.apocalypse(20)
         self.ticks += 1
         self.count_incant -= 1
         if (self.count_incant <= 0 and self.animation != 2):
