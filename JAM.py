@@ -308,6 +308,8 @@ class NPC:
             self.move_left()
         elif (self.movement > 0 and self.direction == 0):
             self.move_right()
+        if (self.rect.x < width / 2):
+            self.rect = width / 2
         self.movement -= 1
         self.wait -= 1
 
@@ -442,8 +444,8 @@ while running:
             player.direction[3] = 1
         if mouse_button[0]:
             player.shoot(mouse_pos, 1)
-        #if(boss.phase == 0 and boss.transi == False):
-            #boss.phase_one()
+        if(boss.phase == 0 and boss.transi == False):
+            boss.phase_one()
         if (boss.phase == 1):
             boss.phase_two()
 
