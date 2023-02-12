@@ -488,7 +488,7 @@ while running:
     # Check for collisions between shoots and boss
     for shoot in player.shoots:
         if (boss.transi == False and shoot.rect.colliderect(boss.rect)):
-            boss.health -= 1
+            boss.health -= shoot.damage
             player.shoots.remove(shoot)
 
     # Check for collision between entities and bat
