@@ -20,6 +20,7 @@ GREY = (128, 128, 128)
 
 # Define speed of game elements
 player_speed = 5
+npc_speed = 3
 speed_shoot = 10
 
 # Define mouse usage
@@ -31,6 +32,10 @@ plyr_back = pygame.image.load('assets/plyr_back.png')
 plyr_back = pygame.transform.scale(plyr_back, (50, 50))
 plyr_front = pygame.image.load('assets/plyr_front.png')
 plyr_front = pygame.transform.scale(plyr_front, (50, 50))
+girl_img = pygame.image.load('assets/girl.png')
+girl_img = pygame.transform.scale(girl_img, (50, 50))
+girl_side = pygame.image.load('assets/girl_side.png')
+girl_side = pygame.transform.scale(girl_side, (50, 50))
 boss_img = pygame.image.load('assets/boss.png')
 boss_img = pygame.transform.scale(boss_img, (100, 100))
 asteroid_img = pygame.image.load('assets/fireBall.png')
@@ -56,12 +61,20 @@ class Player:
     def move(self):
         if (self.direction[0]):
             self.rect.x -= player_speed
+            if (self.rect.x < 0):
+                self.rect.x = 0
         if (self.direction[1]):
             self.rect.x += player_speed
+            if (self.rect.x + self.rect.width > width):
+                self.rect.x = width - self.rect.width
         if (self.direction[2]):
             self.rect.y -= player_speed
+            if (self.rect.y < 0):
+                self.rect.y = 0
         if (self.direction[3]):
             self.rect.y += player_speed
+            if (self.rect.y + self.rect.height > height):
+                self.rect.y = height - self.rect.height
 
     def shoot(self, dest):
         now = pygame.time.get_ticks()
@@ -160,13 +173,58 @@ class Boss:
     def draw_fire_balls(self):
         for enemy in self.fire_balls:
             enemy.draw()
-        
+
+# Create NPC
+
+class NPC:
+    def __init__(self, x, y, img, img_side):
+        self.img = img
+        self.img_side = img_side
+        self.img_side_reverse = pygame.transform.flip(self.img_side, True, False)
+        self.rect = self.img.get_rect()
+        self.rect.x = x
+        self.rect.y = y
+        self.movement = 0
+        self.direction = 0
+        self.wait = 0
+        self.animation = 0
+
+    def move(self):
+        if (self.animation != 0 and self.movement == 0):
+            self.animation = 0
+        if (self.movement <= 0 and self.wait <= 0):
+            self.movement = random.randint(10, 50)
+            self.direction = random.randint(0, 1)
+            self.wait = random.randint(30, 60)
+        if (self.movement > 0 and self.direction):
+            self.animation = 2
+            self.rect.x -= npc_speed
+            if (self.rect.x < 0):
+                self.rect.x = 0
+        elif (self.movement > 0 and self.direction == 0):
+            self.animation = 1
+            self.rect.x += npc_speed
+            if (self.rect.x + self.rect.width > width):
+                self.rect.x = width - self.rect.width
+        self.movement -= 1
+        self.wait -= 1
+
+    def draw(self):
+        if (self.animation == 0):
+            screen.blit(self.img, self.rect)
+        elif (self.animation == 1):
+            screen.blit(self.img_side, self.rect)
+        else:
+            screen.blit(self.img_side_reverse, self.rect)
+
 # Create player
 player = Player(width / 2 - plyr_back.get_width() / 2, height - plyr_back.get_height())
 
 # Create boss and his fireballs
 boss = Boss(width, height)
-boss.apocalypse()
+
+# Create NPCs
+girl = NPC(0, height - girl_img.get_height(), girl_img, girl_side)
 
 # Define game loop
 running = True
@@ -198,14 +256,18 @@ while running:
     if mouse_button[0]:
         player.shoot(mouse_pos)
 
+    if (len(boss.fire_balls) == 0):
+        boss.apocalypse()
+
     # Update game elements
     player.move()
+    girl.move()
     for shoot in player.shoots:
         shoot.move()
     for enemy in boss.fire_balls:
         enemy.move()
 
-    # Check for collisions between shoots and enemies
+    # Check for collisions between shoots and fire balls
     for shoot in player.shoots:
         for fireball in boss.fire_balls:
             if shoot.rect.colliderect(fireball.rect):
@@ -215,6 +277,12 @@ while running:
                     boss.fire_balls.remove(fireball)
                 player.shoots.remove(shoot)
                 break
+    
+    # Check for collision between fire balls and friendly entities
+    for fireball in boss.fire_balls:
+        if fireball.rect.colliderect(player.rect) or fireball.rect.colliderect(girl.rect):
+            lose = True
+            break
     
     # Check for collisions between shoots and boss
     for shoot in player.shoots:
@@ -248,7 +316,9 @@ while running:
         player.draw_shoots()
         boss.draw_fire_balls()
         boss.draw()
+        girl.draw()
         player.draw(mouse_pos)
+
     
     # Draw score
     score = font.render('Score: ' + str(score_text), True, BLACK)
